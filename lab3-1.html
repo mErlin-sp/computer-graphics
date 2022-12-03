@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LAB-3. Task 1</title>
+    <script>
+        function spiral_points(numPoints, arc = 0.1, separation = 0.2) {
+            // generate points on an Archimedes' spiral
+            // with `arc` giving the length of arc between two points
+            // and `separation` giving the distance between consecutive
+            // turnings
+            // - approximate arc length with circle arc at given distance
+            // - use a spiral equation r = b * phi
+
+            function p2c(r, phi) {
+                return [r * Math.cos(phi), r * Math.sin(phi)]
+            }
+
+            let result = [[0, 0]]
+
+            // initialize the next point in the required distance
+            let r = arc
+            let b = separation / (2 * Math.PI)
+            // find the first phi to satisfy distance of `arc` to the second point
+            let phi = r / b
+
+            let remaining = numPoints
+            while (remaining > 0) {
+                result.push(p2c(r, phi))
+                phi += arc / r
+                r = b * phi
+                remaining -= 1
+            }
+
+            return result
+        }
+    </script>
+</head>
+<body>
+<canvas id="canvas" width="500" height="500"></canvas>
+<script>
+    const canvas = document.getElementById("canvas");
+    const gl = canvas.getContext("webgl");
+
+    const vertexShaderSource =
+        `attribute vec2 a_coords;
+        void main() {
+            gl_Position = vec4(a_coords.x, a_coords.y, 0.0, 1.0);
+            float distance = distance(vec2(0.0, 0.0), vec2(a_coords.x, a_coords.y));
+            gl_PointSize = 20.0 * distance;
+        }`;
+    const fragmentShaderSource =
+        `void main() {
+            gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        }`;
+
+    // Create vertex shader
+    const vsh = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vsh, vertexShaderSource);
+    gl.compileShader(vsh);
+
+    // Create fragment shader
+    const fsh = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fsh, fragmentShaderSource);
+    gl.compileShader(fsh);
+
+    // Create shader program
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vsh);
+    gl.attachShader(shaderProgram, fsh);
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+
+    // Bind coords buffer
+    const a_coords_location = gl.getAttribLocation(shaderProgram, "a_coords");
+    const coords = new Float32Array(spiral_points(100).flat());
+    const a_coords_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(a_coords_location, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_coords_location);
+
+    let pointNumber = 10
+
+    function draw() {
+        gl.clearColor(1.0, 1.0, 0.85, 1.0); // Set background color
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, pointNumber); // Render points
+    }
+
+    draw()
+
+    canvas.onmousedown = function () {
+        pointNumber += 5
+        draw()
+    };
+</script>
+</body>
+</html>
