@@ -1,0 +1,250 @@
+<html lang="en">
+<title>LAB-4</title>
+<canvas id="canvas" width="500" height="500" oncontextmenu="return false"></canvas>
+<script>
+    const canvas = document.getElementById("canvas");
+    const gl = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
+
+    const vertexShaderSource =
+        `#version 300 es
+        in vec3 a_coords;
+        in vec3 a_colors;
+        uniform mat4 u_Scale;
+        uniform mat4 u_RotY;
+        uniform mat4 u_RotX;
+        flat out vec3 v_color;
+        void main() {
+            gl_Position = u_RotX * u_RotY * u_Scale * vec4(a_coords, 1.0);
+            v_color = a_colors;
+        }`;
+    const fragmentShaderSource =
+        `#version 300 es
+        precision mediump float;
+        flat in vec3 v_color;
+        out vec4 fragColor;
+        void main() {
+            fragColor = vec4(v_color, 1.0);
+        }`;
+
+    // Compile vertex shader
+    const vsh = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vsh, vertexShaderSource);
+    gl.compileShader(vsh);
+
+    // Compile fragment shader
+    const fsh = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fsh, fragmentShaderSource);
+    gl.compileShader(fsh);
+
+    // Create shader program
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vsh);
+    gl.attachShader(shaderProgram, fsh);
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+
+    // Bind coords buffer
+    const a_coords_location = gl.getAttribLocation(shaderProgram, "a_coords");
+    const coords = new Float32Array([
+        // Front face
+        -1.0, -1.0, 1.0,
+        1.0, -1.0, 1.0,
+        1.0, 1.0, 1.0,
+        -1.0, 1.0, 1.0,
+
+        // Back face
+        -1.0, -1.0, -1.0,
+        -1.0, 1.0, -1.0,
+        1.0, 1.0, -1.0,
+        1.0, -1.0, -1.0,
+
+        // Top face
+        -1.0, 1.0, -1.0,
+        -1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0,
+        1.0, 1.0, -1.0,
+
+        // Bottom face
+        -1.0, -1.0, -1.0,
+        1.0, -1.0, -1.0,
+        1.0, -1.0, 1.0,
+        -1.0, -1.0, 1.0,
+
+        // Right face
+        1.0, -1.0, -1.0,
+        1.0, 1.0, -1.0,
+        1.0, 1.0, 1.0,
+        1.0, -1.0, 1.0,
+
+        // Left face
+        -1.0, -1.0, -1.0,
+        -1.0, -1.0, 1.0,
+        -1.0, 1.0, 1.0,
+        -1.0, 1.0, -1.0
+    ].flat());
+    const a_coords_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(a_coords_location, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_coords_location);
+
+    function bindColorsBuffer(colors) {
+        const a_colors_location = gl.getAttribLocation(shaderProgram, "a_colors");
+        const a_colors_buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, a_colors_buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+        gl.vertexAttribPointer(a_colors_location, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(a_colors_location);
+    }
+
+    // Bind indices buffer
+    const indices = new Uint8Array([
+        // front face
+        [0, 1, 2],
+        [0, 2, 3],
+        // back face
+        [4, 5, 6],
+        [4, 6, 7],
+        // bottom face
+        [8, 9, 10],
+        [8, 10, 11],
+        // top face
+        [12, 13, 14],
+        [12, 14, 15],
+        // left face
+        [16, 17, 18],
+        [16, 18, 19],
+        // right face
+        [20, 21, 22],
+        [20, 22, 23]
+    ].flat());
+    const bufferInd = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bufferInd);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+    let thetaX = 45;
+    let thetaY = 45;
+    let scale = 0.3
+
+    function updateRotateXMatrix(thetaX) {
+        const u_rotateX_location = gl.getUniformLocation(shaderProgram, "u_RotX");
+        const rad = thetaX * Math.PI / 180;
+        const rotateXMatrix = new Float32Array([1.0, 0.0, 0.0, 0.0, 0.0,
+            Math.cos(rad), Math.sin(rad), 0.0, 0.0, -Math.sin(rad), Math.cos(rad), 0.0, 0.0, 0.0, 0.0, 1.0]);
+        gl.uniformMatrix4fv(u_rotateX_location, false, rotateXMatrix);
+    }
+
+    function updateRotateYMatrix(thetaY) {
+        const u_rotateY_location = gl.getUniformLocation(shaderProgram, "u_RotY");
+        const rad = thetaY * Math.PI / 180;
+        const rotateYMatrix = new Float32Array([Math.cos(rad), 0.0, -Math.sin(rad),
+            0.0, 0.0, 1.0, 0.0, 0.0, Math.sin(rad), 0.0, Math.cos(rad), 0.0, 0.0, 0.0,
+            0.0, 1.0]);
+        gl.uniformMatrix4fv(u_rotateY_location, false, rotateYMatrix);
+    }
+
+    function updateScaleMatrix(scale) {
+        const scaleMatrix = new Float32Array([
+            scale, 0.0, 0.0, 0.0,
+            0.0, scale, 0.0, 0.0,
+            0.0, 0.0, scale, 0.0,
+            0.0, 0.0, 0.0, 1.0
+        ]);
+
+        const u_Scale = gl.getUniformLocation(shaderProgram, 'u_Scale');
+        gl.uniformMatrix4fv(u_Scale, false, scaleMatrix);
+    }
+
+    function render() {
+        gl.clearColor(1.0, 1.0, 0.85, 1.0); // Set background color
+        gl.enable(gl.DEPTH_TEST);
+        gl.enable(gl.CULL_FACE);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // Update matrices
+        updateRotateXMatrix(thetaX)
+        updateRotateYMatrix(thetaY)
+
+        // Render black cube
+        updateScaleMatrix(scale + 0.01)
+        bindColorsBuffer(new Float32Array(Array.from({length: 3 * 24}, () => 0.0)))
+        gl.drawElements(gl.TRIANGLES, 3 * 12, gl.UNSIGNED_BYTE, 0); // 3 * 12
+
+        gl.clear(gl.DEPTH_BUFFER_BIT);
+
+        // Render colored cube
+        updateScaleMatrix(scale)
+        bindColorsBuffer(new Float32Array([
+            // front face
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            // back face
+            [1.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+            // bottom face
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            // top face
+            [1.0, 0.5, 0.5],
+            [1.0, 0.5, 0.5],
+            [1.0, 0.5, 0.5],
+            [1.0, 0.5, 0.5],
+            // left face
+            [1.0, 0.0, 1.0],
+            [1.0, 0.0, 1.0],
+            [1.0, 0.0, 1.0],
+            [1.0, 0.0, 1.0],
+            // right face
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, 1.0],
+        ].flat()))
+        gl.drawElements(gl.TRIANGLES, 3 * 12, gl.UNSIGNED_BYTE, 0); // 3 * 12
+    }
+
+    render()
+
+    window.onkeydown = function (ev) {
+        if (ev.key === 'ArrowRight') {
+            thetaY += 10
+            render()
+        } else if (ev.key === 'ArrowLeft') {
+            thetaY -= 10
+            render()
+        } else if (ev.key === 'ArrowUp') {
+            thetaX += 10
+            render()
+        } else if (ev.key === 'ArrowDown') {
+            thetaX -= 10
+            render()
+        }
+
+        console.log('x: ' + thetaX + '  y: ' + thetaY)
+    }
+
+    window.onmousedown = function (ev) {
+        if (ev.button === 0) {
+            if (scale >= 0.5) {
+                return
+            }
+            scale += 0.1
+            render()
+        } else if (ev.button === 2) {
+            if (scale <= 0.2) {
+                return
+            }
+            scale -= 0.1
+            render()
+        }
+
+        console.log('scale: ' + scale)
+    }
+</script>
+</html>
