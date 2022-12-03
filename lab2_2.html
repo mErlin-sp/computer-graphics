@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LAB-2. Task 2</title>
+</head>
+<body>
+<canvas id="canvas" width="500" height="500"></canvas>
+<script>
+    const canvas = document.getElementById("canvas");
+    const gl = canvas.getContext("webgl2");
+
+    const vertexShaderSource =
+        `#version 300 es
+        in vec2 a_coords;
+        void main() {
+            gl_Position = vec4(a_coords, 0.0, 1.0);
+        }`;
+    const fragmentShaderSource =
+        `#version 300 es
+        precision mediump float;
+        out vec4 fragColor;
+        void main() {
+            fragColor = vec4(1.0, 0.0, 0.0, 1.0);
+        }`;
+
+    // Create vertex shader
+    const vsh = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vsh, vertexShaderSource);
+    gl.compileShader(vsh);
+
+    // Create fragment shader
+    const fsh = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fsh, fragmentShaderSource);
+    gl.compileShader(fsh);
+
+    // Create shader program
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vsh);
+    gl.attachShader(shaderProgram, fsh);
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+
+    // Bind coords buffer
+    const a_coords_location = gl.getAttribLocation(shaderProgram, "a_coords");
+    const coords = new Float32Array([
+        0.0, 0.0, 0.0, 1.0,
+        0.0, 0.0, 1.0, 0.0,
+        0.0, 1.0, 1.0, 0.0,
+    ]);
+    const a_coords_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(a_coords_location, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_coords_location);
+    
+    function draw() {
+        gl.clearColor(1.0, 1.0, 0.85, 1.0); // Set background color
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.LINES, 0, 6); // Render points
+    }
+
+    draw()
+</script>
+</body>
+</html>
