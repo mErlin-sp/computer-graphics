@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LAB-3. Task 2</title>
+    <script>
+        function getRandomInt(min, max) {
+            min = Math.ceil(min);
+            max = Math.floor(max);
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        function makeArr(startValue, stopValue, cardinality) {
+            const arr = [];
+            const step = (stopValue - startValue) / (cardinality - 1);
+            for (let i = 0; i < cardinality; i++) {
+                arr.push(startValue + (step * i));
+            }
+            return arr;
+        }
+
+        function rosePoints(numPoints, n, d, amplitude) {
+            const k = n / d;
+
+            const thetaArr = makeArr(0, 2 * Math.PI, numPoints)
+            let result = []
+            thetaArr.forEach(theta => {
+                const x = amplitude * Math.cos(k * theta) * Math.cos(theta);
+                const y = amplitude * Math.cos(k * theta) * Math.sin(theta);
+                result.push([x, y])
+            })
+
+            return result;
+        }
+    </script>
+</head>
+<body>
+<canvas id="canvas" width="500" height="500"></canvas>
+<script>
+    const canvas = document.getElementById("canvas");
+    const gl = canvas.getContext("webgl");
+
+    const vertexShaderSource =
+        `attribute vec2 a_coords;
+        uniform vec3 a_colors;
+        varying vec3 v_color;
+        void main() {
+            gl_Position = vec4(a_coords.x, a_coords.y, 0.0, 1.0);
+            gl_PointSize = 3.0;
+            v_color = a_colors;
+        }`;
+    const fragmentShaderSource =
+        `precision mediump float;
+        varying vec3 v_color;
+        void main() {
+            gl_FragColor = vec4(v_color, 1.0);
+        }`;
+
+    // Create vertex shader
+    const vsh = gl.createShader(gl.VERTEX_SHADER);
+    gl.shaderSource(vsh, vertexShaderSource);
+    gl.compileShader(vsh);
+
+    // Create fragment shader
+    const fsh = gl.createShader(gl.FRAGMENT_SHADER);
+    gl.shaderSource(fsh, fragmentShaderSource);
+    gl.compileShader(fsh);
+
+    // Create shader program
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vsh);
+    gl.attachShader(shaderProgram, fsh);
+    gl.linkProgram(shaderProgram);
+    gl.useProgram(shaderProgram);
+
+    const pointNumber = 10000
+    const amplitude = 0.8
+    const d = 1
+    let n = getRandomInt(2, 7)
+
+    // Bind coords buffer
+    const a_coords_location = gl.getAttribLocation(shaderProgram, "a_coords");
+    const coords = new Float32Array(rosePoints(pointNumber, n, d, amplitude).flat());
+    const a_coords_buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, a_coords_buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+    gl.vertexAttribPointer(a_coords_location, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(a_coords_location);
+
+    // Bind colors matrix
+    const a_colors_location = gl.getUniformLocation(shaderProgram, "a_colors");
+    let color = [1.0, 0.0, 0.0];
+    gl.uniform3fv(a_colors_location, new Float32Array(color))
+
+
+    function draw() {
+        gl.clearColor(1.0, 1.0, 0.85, 1.0); // Set background color
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawArrays(gl.POINTS, 0, pointNumber); // Render points
+    }
+
+    draw()
+
+    canvas.onmousedown = function () {
+        // Change rose
+        n = getRandomInt(2, 7)
+
+        // Update coords buffer
+        const coords = new Float32Array(rosePoints(pointNumber, n, d, amplitude).flat());
+        gl.bufferData(gl.ARRAY_BUFFER, coords, gl.STATIC_DRAW);
+
+        // Change color
+        if (JSON.stringify(color) === JSON.stringify([1.0, 0.0, 0.0])) { // If current color is red
+            color = [0.0, 1.0, 0.0] // Change it to green
+        } else {
+            color = [1.0, 0.0, 0.0] // Else change it to red
+        }
+        gl.uniform3fv(a_colors_location, new Float32Array(color))
+
+        draw()
+    };
+</script>
+</body>
+</html>
